@@ -61,7 +61,7 @@ class StreamMediaMod:
 
         try:
             with open(file_path, "wb") as f:
-                async for chunk in self.iter_file(file_id_obj, file_size, limit, offset):
+                async for chunk in self.get_file(file_id_obj, file_size, limit, offset):
                     f.write(chunk)
                     yield chunk
 
