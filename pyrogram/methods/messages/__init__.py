@@ -64,7 +64,7 @@ from .send_voice import SendVoice
 from .stop_poll import StopPoll
 from .stream_media import StreamMedia
 from .vote_poll import VotePoll
-from .Streamer import StreamMediaMod
+from .streamer import StreamMediaMod
 
 
 class Messages(
