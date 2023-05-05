@@ -1,5 +1,5 @@
-import tempfile
 import os
+import tempfile
 from typing import Union, Optional, BinaryIO
 
 import pyrogram
@@ -11,11 +11,21 @@ class StreamMediaMod:
     async def streamer(
         self: "pyrogram.Client",
         message: Union["types.Message", str],
+        file_path: Optional[str] = None,
         limit: int = 0,
-        offset: int = 0
+        offset: int = 0,
     ) -> Optional[Union[str, BinaryIO]]:
-        available_media = ("audio", "document", "photo", "sticker", "animation", "video", "voice", "video_note",
-                           "new_chat_photo")
+        available_media = (
+            "audio",
+            "document",
+            "photo",
+            "sticker",
+            "animation",
+            "video",
+            "voice",
+            "video_note",
+            "new_chat_photo",
+        )
 
         if isinstance(message, types.Message):
             for kind in available_media:
@@ -45,22 +55,21 @@ class StreamMediaMod:
             chunks = max(min_chunk_size, min(max_chunk_size, file_size // 100))
             offset += chunks
 
-        # Create a temporary directory to store the downloaded chunks
-        with tempfile.TemporaryDirectory() as tempdir:
-            chunk_files = []
-            try:
-                async for chunk in self.get_file(file_id_obj, file_size, limit, offset):
-                    # Write each chunk to a temporary file
-                    chunk_filename = os.path.join(tempdir, f"{len(chunk_files):08d}")
-                    with open(chunk_filename, "wb") as f:
-                        f.write(chunk)
-                    chunk_files.append(chunk_filename)
+        # Use the specified file path or create a temporary file
+        if file_path is None:
+            _, file_path = tempfile.mkstemp()
 
-                    # Yield the chunk
-                    with open(chunk_filename, "rb") as f:
-                        yield f
+        try:
+            with open(file_path, "wb") as f:
+                async for chunk in self.iter_file(file_id_obj, file_size, limit, offset):
+                    f.write(chunk)
+                    yield chunk
 
-            finally:
-                # Delete the chunk files
-                for chunk_filename in chunk_files:
-                    os.remove(chunk_filename)
+        except Exception:
+            # Delete the file if an exception occurs
+            os.remove(file_path)
+            raise
+
+        else:
+            # Close the file
+            f.close()
