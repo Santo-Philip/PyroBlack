@@ -14,6 +14,7 @@ class StreamMediaMod:
         file_path: Optional[str] = None,
         limit: int = 0,
         offset: int = 0,
+        delete_chunks: bool = True,
     ) -> Optional[Union[str, BinaryIO]]:
         available_media = (
             "audio",
@@ -63,7 +64,12 @@ class StreamMediaMod:
             with open(file_path, "wb") as f:
                 async for chunk in self.get_file(file_id_obj, file_size, limit, offset):
                     f.write(chunk)
-                    yield chunk
+                    if delete_chunks:
+                        os.remove(file_path)
+
+            if not delete_chunks:
+                with open(file_path, "rb") as f:
+                    return f.read()
 
         except Exception:
             # Delete the file if an exception occurs
@@ -73,3 +79,5 @@ class StreamMediaMod:
         else:
             # Close the file
             f.close()
+
+        return file_path
