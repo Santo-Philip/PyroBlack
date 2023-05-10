@@ -1,83 +1,61 @@
-import os
 import tempfile
-from typing import Union, Optional, BinaryIO
+from typing import Union, AsyncGenerator
 
 import pyrogram
 from pyrogram import types
 from pyrogram.file_id import FileId
 
 
-class StreamMediaMod:
-    async def streamer(
-        self: "pyrogram.Client",
-        message: Union["types.Message", str],
-        file_path: Optional[str] = None,
-        limit: int = 0,
-        offset: int = 0,
-        delete_chunks: bool = True,
-    ) -> Optional[Union[str, BinaryIO]]:
-        available_media = (
-            "audio",
-            "document",
-            "photo",
-            "sticker",
-            "animation",
-            "video",
-            "voice",
-            "video_note",
-            "new_chat_photo",
-        )
+async def streamer(
+    self: "pyrogram.Client",
+    message: Union["types.Message", str],
+    chunk_size: int = 10240,
+) -> AsyncGenerator[bytes, None]:
+    available_media = (
+        "audio",
+        "document",
+        "photo",
+        "sticker",
+        "animation",
+        "video",
+        "voice",
+        "video_note",
+        "new_chat_photo",
+    )
 
-        if isinstance(message, types.Message):
-            for kind in available_media:
-                media = getattr(message, kind, None)
+    if isinstance(message, types.Message):
+        for kind in available_media:
+            media = getattr(message, kind, None)
 
-                if media is not None:
-                    break
-            else:
-                raise ValueError("This message doesn't contain any downloadable media")
+            if media is not None:
+                break
         else:
-            media = message
+            raise ValueError("This message doesn't contain any downloadable media")
+    else:
+        media = message
 
-        if isinstance(media, str):
-            file_id_str = media
-        else:
-            file_id_str = media.file_id
+    if isinstance(media, str):
+        file_id_str = media
+    else:
+        file_id_str = media.file_id
 
-        file_id_obj = FileId.decode(file_id_str)
-        file_size = getattr(media, "file_size", 0)
+    file_id_obj = FileId.decode(file_id_str)
+    file_size = getattr(media, "file_size", 0)
 
-        if offset < 0:
-            if file_size == 0:
-                raise ValueError("Negative offsets are not supported for file ids, pass a Message object instead")
+    # Create a temporary file.
+    tmp_file = tempfile.NamedTemporaryFile(delete=False)
 
-            min_chunk_size = 10240  # 10KB
-            max_chunk_size = 10485760  # 10MB
-            chunks = max(min_chunk_size, min(max_chunk_size, file_size // 100))
-            offset += chunks
+    # Start downloading the media in chunks.
+    offset = 0
+    while True:
+        chunk = await self.download_media(file_id_obj, offset=offset, limit=chunk_size)
+        if not chunk:
+            break
+        # Yield the chunk.
+        yield chunk
+        # Delete the chunk.
+        del chunk
+        offset += chunk_size
 
-        # Use the specified file path or create a temporary file
-        if file_path is None:
-            _, file_path = tempfile.mkstemp()
-
-        try:
-            with open(file_path, "wb") as f:
-                async for chunk in self.get_file(file_id_obj, file_size, limit, offset):
-                    f.write(chunk)
-                    if delete_chunks:
-                        os.remove(file_path)
-
-            if not delete_chunks:
-                with open(file_path, "rb") as f:
-                    return f.read()
-
-        except Exception:
-            # Delete the file if an exception occurs
-            os.remove(file_path)
-            raise
-
-        else:
-            # Close the file
-            f.close()
-
-        return file_path
+    # Close the temporary file.
+    tmp_file.close()
