@@ -47,11 +47,12 @@ class StreamMediaMod:
         temp_dir = tempfile.mkdtemp()
 
         try:
-            for i, chunk in enumerate(self.get_file(file_id_obj, file_size, limit, offset)):
+            async for i, chunk in self.get_file(file_id_obj, file_size, limit, offset):
                 with open(os.path.join(temp_dir, f"{i}.chunk"), "wb") as f:
                     f.write(chunk)
-                yield f.read()
-                os.remove(f.name)
+                with open(os.path.join(temp_dir, f"{i}.chunk"), "rb") as f:
+                    yield f.read()
+                os.remove(os.path.join(temp_dir, f"{i}.chunk"))
         finally:
             # Remove the temporary directory and all files in it
             for file in os.listdir(temp_dir):
