@@ -48,16 +48,17 @@ class StreamMediaMod:
 
         try:
             # Iterate over the chunks of the file, writing each chunk to a temporary file in the temporary directory.
-            for i in range(0, file_size, 5 * 1024 * 1024):
-                with open(os.path.join(temp_dir, f"{i}.chunk"), "wb") as f:
-                    f.write(await self.get_file(file_id_obj, file_size, limit, offset + i))
+            async with tempfile.TemporaryDirectory() as temp_dir:
+                for i in range(0, file_size, 5 * 1024 * 1024):
+                    with open(os.path.join(temp_dir, f"{i}.chunk"), "wb") as f:
+                        f.write(await self.get_file(file_id_obj, file_size, limit, offset + i))
 
-                # Open the temporary file and read its contents.
-                with open(os.path.join(temp_dir, f"{i}.chunk"), "rb") as f:
-                    yield f.read()
+                    # Open the temporary file and read its contents.
+                    with open(os.path.join(temp_dir, f"{i}.chunk"), "rb") as f:
+                        yield f.read()
 
-                # Remove the temporary file.
-                os.remove(os.path.join(temp_dir, f"{i}.chunk"))
+                    # Remove the temporary file.
+                    os.remove(os.path.join(temp_dir, f"{i}.chunk"))
 
             # Iterate over the chunks of the file, doing something with each chunk.
             async for chunk in (chunk for i, chunk in self.get_file(file_id_obj, file_size, limit, offset)):
