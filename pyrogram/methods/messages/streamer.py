@@ -69,4 +69,4 @@ class StreamMediaMod:
                 for file in os.listdir(temp_dir):
                     file_path = os.path.join(temp_dir, file)
                     os.remove(file_path)
-                await asyncio.rmdir(temp_dir)
+                remove_temporary_directory(temp_dir)
