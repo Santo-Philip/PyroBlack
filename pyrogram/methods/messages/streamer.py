@@ -9,9 +9,6 @@ from pyrogram.file_id import FileId
 
 class StreamMediaMod:
 
-    def __init__(self, client):
-        self.client = client
-
     async def streamer(
         self,
         message: Union["types.Message", str],
