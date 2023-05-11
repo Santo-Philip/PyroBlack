@@ -12,7 +12,7 @@ class StreamMediaMod:
     async def streamer(
             self: "pyrogram.Client",
             message: Union["types.Message", str],
-            chunk_size: int = 10240,
+            chunk_size: int = 5 * 1024 * 1024,
     ) -> AsyncGenerator[bytes, None]:
         available_media = (
             "audio",
@@ -40,7 +40,7 @@ class StreamMediaMod:
         if isinstance(media, str):
             file_id_str = media
         else:
-            file_id_str = media.id
+            file_id_str = media.file_id
 
         file_id_obj = FileId.decode(file_id_str)
         file_size = getattr(media, "file_size", 0)
