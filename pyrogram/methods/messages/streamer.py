@@ -1,5 +1,7 @@
-import tempfile
-from typing import Union, AsyncGenerator
+import math
+import os
+import shutil
+from typing import Union, Optional, BinaryIO
 
 import pyrogram
 from pyrogram import types
@@ -7,24 +9,14 @@ from pyrogram.file_id import FileId
 
 
 class StreamMediaMod:
-
-
     async def streamer(
-            self: "pyrogram.Client",
-            message: Union["types.Message", str],
-            chunk_size: int = 5 * 1024 * 1024,
-    ) -> AsyncGenerator[bytes, None]:
-        available_media = (
-            "audio",
-            "document",
-            "photo",
-            "sticker",
-            "animation",
-            "video",
-            "voice",
-            "video_note",
-            "new_chat_photo",
-        )
+        self: "pyrogram.Client",
+        message: Union["types.Message", str],
+        limit: int = 0,
+        offset: int = 0
+    ) -> Optional[Union[str, BinaryIO]]:
+        available_media = ("audio", "document", "photo", "sticker", "animation", "video", "voice", "video_note",
+                           "new_chat_photo")
 
         if isinstance(message, types.Message):
             for kind in available_media:
@@ -45,20 +37,17 @@ class StreamMediaMod:
         file_id_obj = FileId.decode(file_id_str)
         file_size = getattr(media, "file_size", 0)
 
-        # Create a temporary file.
-        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        if offset < 0:
+            if file_size == 0:
+                raise ValueError("Negative offsets are not supported for file ids, pass a Message object instead")
 
-        # Start downloading the media in chunks.
-        offset = 0
-        while True:
-            chunk = await self.download_media(file_id_obj)
-            if not chunk:
-                break
-            # Yield the chunk.
-            yield chunk
-            # Delete the chunk.
-            del chunk
-            offset += chunk_size
+            chunks = math.ceil(file_size / (5 * 1024 * 1024))
+            offset += chunks
 
-        # Close the temporary file.
-        tmp_file.close()
+        chunk_index = 0
+        # Download each chunk to the same file
+        with open(f"{file_id_obj}", "wb") as f:
+            async for chunk in self.get_file(file_id_obj, file_size, limit, offset):
+                f.write(chunk)
+
+        return f.name
