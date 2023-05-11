@@ -10,14 +10,9 @@ from pyrogram.file_id import FileId
 
 
 class StreamMediaMod:
-    async def streamer(
-        self: "pyrogram.Client",
-        message: Union["types.Message", str],
-        limit: int = 0,
-        offset: int = 0
-    ) -> Optional[Union[str, BinaryIO]]:
-        available_media = ("audio", "document", "photo", "sticker", "animation", "video", "voice", "video_note",
-                           "new_chat_photo")
+    async def streamer(self, message, limit=0, offset=0):
+        available_media = (
+        "audio", "document", "photo", "sticker", "animation", "video", "voice", "video_note", "new_chat_photo")
 
         if isinstance(message, types.Message):
             for kind in available_media:
@@ -49,12 +44,18 @@ class StreamMediaMod:
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 chunk_index = 0
-                for chunk in self.get_file(file_id_obj, file_size, limit, offset):
+                for chunk in await self.get_file(file_id_obj, file_size, limit, offset):
                     with open(os.path.join(temp_dir, str(chunk_index)), "wb") as f:
                         f.write(chunk)
                     chunk_index += 1
 
-                    return f.read()
-            finally:
-                # Delete the temporary directory even if an exception occurs
+                chunks = []
+                for chunk in os.listdir(temp_dir):
+                    with open(os.path.join(temp_dir, chunk), "rb") as f:
+                        chunks.append(f.read())
+
+                return chunks
+            except Exception as e:
+                # Delete the temporary directory if any error occurs
                 shutil.rmtree(temp_dir)
+                raise e
