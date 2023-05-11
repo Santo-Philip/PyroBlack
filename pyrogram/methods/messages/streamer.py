@@ -1,14 +1,12 @@
-import aiocontextvars
-import asyncio
 import math
 import os
-import tempfile
 from typing import Union, Optional, BinaryIO
+import tempfile
+import asyncio
+
 import pyrogram
 from pyrogram import types
 from pyrogram.file_id import FileId
-
-temp_dir_var = aiocontextvars.ContextVar("temp_dir")
 
 
 class StreamMediaMod:
@@ -47,24 +45,29 @@ class StreamMediaMod:
             chunks = math.ceil(file_size / (5 * 1024 * 1024))
             offset += chunks
 
-        async with tempfile.TemporaryDirectory() as temp_dir:
-            temp_dir_var.set(temp_dir)
-            try:
-                for i in range(0, file_size, 5 * 1024 * 1024):
-                    with open(os.path.join(temp_dir, f"{i}.chunk"), "wb") as f:
-                        f.write(await self.get_file(file_id_obj, file_size, limit, offset + i))
+        temp_dir = await asyncio.TemporaryDirectory()
 
-                    with open(os.path.join(temp_dir, f"{i}.chunk"), "rb") as f:
-                        yield f.read()
+        try:
+            # Iterate over the chunks of the file, writing each chunk to a temporary file in the temporary directory.
+            for i in range(0, file_size, 5 * 1024 * 1024):
+                with open(os.path.join(temp_dir, f"{i}.chunk"), "wb") as f:
+                    f.write(await self.get_file(file_id_obj, file_size, limit, offset + i))
 
-                    os.remove(os.path.join(temp_dir, f"{i}.chunk"))
+                # Open the temporary file and read its contents.
+                with open(os.path.join(temp_dir, f"{i}.chunk"), "rb") as f:
+                    yield f.read()
 
-                async for chunk in self.get_file(file_id_obj, file_size, limit, offset):
-                    pass
+                # Remove the temporary file.
+                os.remove(os.path.join(temp_dir, f"{i}.chunk"))
 
-            finally:
-                for file in os.listdir(temp_dir):
-                    file_path = os.path.join(temp_dir, file)
-                    os.unlink(file_path)
-                os.rmdir(temp_dir)
-                temp_dir_var.reset()
+            # Iterate over the chunks of the file, doing something with each chunk.
+            async for chunk in (chunk for i, chunk in self.get_file(file_id_obj, file_size, limit, offset)):
+                # Do something with the chunk.
+                pass
+
+        finally:
+            # Remove the temporary directory and all files in it
+            for file in os.listdir(temp_dir):
+                file_path = os.path.join(temp_dir, file)
+                os.remove(file_path)
+            await asyncio.rmdir(temp_dir)
