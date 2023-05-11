@@ -40,17 +40,18 @@ class StreamMediaMod:
         if isinstance(media, str):
             file_id_str = media
         else:
-            file_id_str = media.file_id
+            file_id_str = media.id
 
         file_id_obj = FileId.decode(file_id_str)
-        file_size = media.file_size
+        file_size = getattr(media, "file_size", 0)
 
         # Create a temporary file.
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
 
         # Start downloading the media in chunks.
         offset = 0
-        while chunk := await self.download_media(file_id_obj):
+        while True:
+            chunk = await self.download_media(file_id_obj)
             if not chunk:
                 break
             # Yield the chunk.
