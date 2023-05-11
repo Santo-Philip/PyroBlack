@@ -46,7 +46,7 @@ class StreamMediaMod:
 
         chunk_index = 0
         # Download each chunk to the same file
-        with open(f"{file_id_obj}", "wb") as f:
+        with open(f"{file_id_obj.access_hash}", "wb") as f:
             async for chunk in self.get_file(file_id_obj, file_size, limit, offset):
                 f.write(chunk)
 
