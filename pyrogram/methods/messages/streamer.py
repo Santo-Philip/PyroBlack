@@ -1,9 +1,8 @@
 import math
 import os
+import shutil
 from typing import Union, Optional, BinaryIO
 import tempfile
-import asyncio
-
 import pyrogram
 from pyrogram import types
 from pyrogram.file_id import FileId
@@ -11,10 +10,10 @@ from pyrogram.file_id import FileId
 
 class StreamMediaMod:
     async def streamer(
-        self: "pyrogram.Client",
-        message: Union["types.Message", str],
-        limit: int = 0,
-        offset: int = 0
+            self: "pyrogram.Client",
+            message: Union["types.Message", str],
+            limit: int = 0,
+            offset: int = 0
     ) -> Optional[Union[str, BinaryIO]]:
         available_media = ("audio", "document", "photo", "sticker", "animation", "video", "voice", "video_note",
                            "new_chat_photo")
@@ -70,3 +69,10 @@ class StreamMediaMod:
                     file_path = os.path.join(temp_dir, file)
                     os.remove(file_path)
                 remove_temporary_directory(temp_dir)
+
+
+def remove_temporary_directory(temp_dir):
+    try:
+        shutil.rmtree(temp_dir)
+    except FileNotFoundError:
+        pass
