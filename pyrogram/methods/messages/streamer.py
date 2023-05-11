@@ -1,6 +1,7 @@
 import math
 import os
 import shutil
+import tempfile
 from typing import Union, Optional, BinaryIO
 
 import pyrogram
@@ -44,10 +45,16 @@ class StreamMediaMod:
             chunks = math.ceil(file_size / (5 * 1024 * 1024))
             offset += chunks
 
-        chunk_index = 0
-        # Download each chunk to the same file
-        with open(f"{file_id_obj.access_hash}", "wb") as f:
-            async for chunk in self.get_file(file_id_obj, file_size, limit, offset):
-                f.write(chunk)
+        # Download each chunk to a temporary directory one by one and delete each chunk immediately after it is accessed or read
+        with tempfile.TemporaryDirectory() as temp_dir:
+            try:
+                chunk_index = 0
+                for chunk in self.get_file(file_id_obj, file_size, limit, offset):
+                    with open(os.path.join(temp_dir, str(chunk_index)), "wb") as f:
+                        f.write(chunk)
+                    chunk_index += 1
 
-        return f.name
+                    return f.read()
+            finally:
+                # Delete the temporary directory even if an exception occurs
+                shutil.rmtree(temp_dir)
