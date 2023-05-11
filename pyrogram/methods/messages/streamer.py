@@ -1,8 +1,7 @@
 import math
 import os
-import shutil
-import tempfile
 from typing import Union, Optional, BinaryIO
+import tempfile
 
 import pyrogram
 from pyrogram import types
@@ -40,20 +39,22 @@ class StreamMediaMod:
 
         if offset < 0:
             if file_size == 0:
-                raise ValueError("Negative offsets are not supported  for file ids, pass a Message object instead")
+                raise ValueError("Negative offsets are not supported for file ids, pass a Message object instead")
 
-            chunks = math.ceil(file_size / (5 * 1024 * 1024))
+            chunks = math.ceil(file_size / 1024 / 1024)
             offset += chunks
 
-        # Download each chunk to a temporary directory one by one and delete each chunk immediately after it is accessed or read
-        with tempfile.TemporaryDirectory() as temp_dir:
-            try:
-                chunk_index = 0
-                for chunk in self.get_file(file_id_obj, file_size, limit, offset):
-                    with open(os.path.join(temp_dir, str(chunk_index)), "wb") as f:
-                        f.write(chunk)
-                    chunk_index += 1
+        temp_dir = tempfile.mkdtemp()
 
-                    return f.read()
-            finally:
-                shutil.rmtree(temp_dir)
+        try:
+            for i, chunk in enumerate(self.get_file(file_id_obj, file_size, limit, offset)):
+                with open(os.path.join(temp_dir, f"{i}.chunk"), "wb") as f:
+                    f.write(chunk)
+                yield f.read()
+                os.remove(f.name)
+        finally:
+            # Remove the temporary directory and all files in it
+            for file in os.listdir(temp_dir):
+                file_path = os.path.join(temp_dir, file)
+                os.remove(file_path)
+            os.rmdir(temp_dir)
