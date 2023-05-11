@@ -8,8 +8,8 @@ from pyrogram import types
 from pyrogram.file_id import FileId
 
 
-class StreamMedia:
-    async def stream_media(
+class StreamMediaMod:
+    async def streamer(
         self: "pyrogram.Client",
         message: Union["types.Message", str],
         limit: int = 0,
